@@ -97,6 +97,11 @@
                 <button onclick="generateGrid()" class="ml-2 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded text-sm font-medium text-gray-700 transition"><i class="fa-solid fa-rotate-right"></i></button>
             </div>
             
+            <div class="flex items-center gap-2 bg-white p-2 rounded-lg border border-gray-200 shadow-sm flex-1 md:flex-none">
+                <i class="fa-solid fa-magnifying-glass text-gray-400 ml-1"></i>
+                <input type="text" id="search-emp" placeholder="Lọc tên (VD: BS)..." class="w-full md:w-40 p-1 border-none outline-none text-sm focus:ring-0" onkeyup="renderBody()">
+            </div>
+
             <div class="flex flex-wrap gap-x-3 gap-y-1.5 text-[10.5px] font-medium bg-white p-2 rounded-lg border border-gray-200 shadow-sm text-gray-600">
                 <div class="flex items-center"><span class="bg-blue-100 text-blue-700 font-bold px-1.5 py-0.5 rounded mr-1">+</span> Lương TG</div>
                 <div class="flex items-center"><span class="bg-indigo-100 text-indigo-700 font-bold px-1.5 py-0.5 rounded mr-1">SP</span> Lương SP</div>
@@ -374,14 +379,20 @@
             let html = '';
             let grandTotals = { col33: 0, col34: 0, col36: 0 };
 
-            attendanceData.forEach((emp, index) => {
+            const searchTerm = document.getElementById('search-emp')?.value.toLowerCase().trim() || '';
+            const filteredData = attendanceData.filter(emp => emp.name.toLowerCase().includes(searchTerm));
+            
+            let displayIndex = 1;
+
+            filteredData.forEach((emp) => {
                 const totals = calculateTotals(emp.days);
+                const originalIndex = emp.id; // Giữ index gốc để truyền vào quick-menu
                 
                 grandTotals.col33 += totals.col33; grandTotals.col34 += totals.col34; grandTotals.col36 += totals.col36;
 
                 // --- DÒNG SÁNG ---
                 html += `<tr class="hover:bg-sky-50/30 border-b border-gray-100 transition group">
-                    <td rowspan="2" class="p-2 sticky-col-1 font-medium text-gray-500 bg-white border-b border-gray-200">${index + 1}</td>
+                    <td rowspan="2" class="p-2 sticky-col-1 font-medium text-gray-500 bg-white border-b border-gray-200">${displayIndex}</td>
                     <td rowspan="2" class="p-2 sticky-col-2 text-left font-bold text-gray-800 bg-white border-b border-gray-200 truncate" title="${emp.name}">${emp.name}</td>
                     <td class="p-1 sticky-col-3 text-center text-[10px] font-bold text-gray-500 bg-white border-b border-gray-100 border-r border-gray-300">S</td>
                 `;
@@ -394,7 +405,7 @@
                     const { am } = parseDayCode(codeStr);
                     
                     html += `
-                        <td class="p-0 border-r border-gray-100 ${isWeekend ? 'weekend-col' : ''} cursor-pointer hover:bg-sky-100 transition" onclick="openMenu(event, ${index}, ${d}, 'am')">
+                        <td class="p-0 border-r border-gray-100 ${isWeekend ? 'weekend-col' : ''} cursor-pointer hover:bg-sky-100 transition" onclick="openMenu(event, ${originalIndex}, ${d}, 'am')">
                             <div class="w-full h-6 flex items-center justify-center font-bold text-[11px] ${getColorClass(am)}">${am || ''}</div>
                         </td>
                     `;
@@ -419,13 +430,14 @@
                     const { pm } = parseDayCode(codeStr);
                     
                     html += `
-                        <td class="p-0 border-r border-gray-100 ${isWeekend ? 'weekend-col' : ''} cursor-pointer hover:bg-sky-100 transition" onclick="openMenu(event, ${index}, ${d}, 'pm')">
+                        <td class="p-0 border-r border-gray-100 ${isWeekend ? 'weekend-col' : ''} cursor-pointer hover:bg-sky-100 transition" onclick="openMenu(event, ${originalIndex}, ${d}, 'pm')">
                             <div class="w-full h-6 flex items-center justify-center font-bold text-[11px] ${getColorClass(pm)}">${pm || ''}</div>
                         </td>
                     `;
                 }
 
                 html += `</tr>`;
+                displayIndex++;
             });
 
             html += `<tr class="font-bold bg-gray-100 border-t-2 border-gray-300 text-sm">
@@ -564,11 +576,15 @@
             h3.push('33', '34', '36');
             wsData.push(h3);
 
-            attendanceData.forEach((emp, index) => {
+            const searchTerm = document.getElementById('search-emp')?.value.toLowerCase().trim() || '';
+            const filteredData = attendanceData.filter(emp => emp.name.toLowerCase().includes(searchTerm));
+            let displayIndex = 1;
+
+            filteredData.forEach((emp) => {
                 const totals = calculateTotals(emp.days);
                 
                 // Dòng Sáng
-                const rowAm = [index + 1, emp.name, 'S'];
+                const rowAm = [displayIndex, emp.name, 'S'];
                 for(let d = 1; d <= daysInMonth; d++) {
                     const { am } = parseDayCode(emp.days[d] || '');
                     rowAm.push(am || '');
@@ -584,6 +600,8 @@
                 }
                 rowPm.push('', '', ''); // totals are merged
                 wsData.push(rowPm);
+
+                displayIndex++;
             });
 
             const merges = [
@@ -596,7 +614,7 @@
             ];
             
             // Hợp ô cho từng nhân viên (STT, Tên, và 3 cột Tổng)
-            for(let i=0; i<attendanceData.length; i++) {
+            for(let i=0; i<filteredData.length; i++) {
                 const startRow = 8 + i*2;
                 merges.push({ s: {r:startRow, c:0}, e: {r:startRow+1, c:0} }); // STT
                 merges.push({ s: {r:startRow, c:1}, e: {r:startRow+1, c:1} }); // Tên
@@ -651,7 +669,11 @@
             let bHtml = '';
             let grandTotals = { col33: 0, col34: 0, col36: 0 };
             
-            attendanceData.forEach((emp, index) => {
+            const searchTerm = document.getElementById('search-emp')?.value.toLowerCase().trim() || '';
+            const filteredData = attendanceData.filter(emp => emp.name.toLowerCase().includes(searchTerm));
+            let displayIndex = 1;
+
+            filteredData.forEach((emp) => {
                 const totals = calculateTotals(emp.days);
                 grandTotals.col33 += totals.col33;
                 grandTotals.col34 += totals.col34;
@@ -659,7 +681,7 @@
 
                 // Dòng Sáng
                 bHtml += `<tr>
-                    <td rowspan="2">${index + 1}</td>
+                    <td rowspan="2">${displayIndex}</td>
                     <td rowspan="2" style="text-align: left; padding-left: 2px !important;">${emp.name}</td>
                     <td style="font-size: 6pt; font-weight: bold;">S</td>
                 `;
@@ -682,6 +704,8 @@
                     bHtml += `<td style="font-size: 6pt;">${pm || ''}</td>`;
                 }
                 bHtml += `</tr>`;
+                
+                displayIndex++;
             });
             
             bHtml += `<tr style="font-weight: bold;">
